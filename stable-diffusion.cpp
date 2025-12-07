@@ -2295,7 +2295,19 @@ public:
 
         int64_t t1 = ggml_time_ms();
         LOG_DEBUG("computing vae decode graph completed, taking %.2fs", (t1 - t0) * 1.0f / 1000);
-        ggml_ext_tensor_clamp_inplace(result, 0.0f, 1.0f);
+        
+        // More robust clamping and NaN/infinity handling for CUDA compatibility
+        if (result != nullptr) {
+            ggml_ext_tensor_iter(result, [&](ggml_tensor* tensor, int64_t i0, int64_t i1, int64_t i2, int64_t i3) {
+                float value = ggml_ext_tensor_get_f32(tensor, i0, i1, i2, i3);
+                if (std::isnan(value) || std::isinf(value)) {
+                    value = 0.0f;
+                } else {
+                    value = std::max(0.0f, std::min(1.0f, value));
+                }
+                ggml_ext_tensor_set_f32(tensor, value, i0, i1, i2, i3);
+            });
+        }
         return result;
     }
 };

@@ -385,7 +385,12 @@ __STATIC_INLINE__ uint8_t* ggml_tensor_to_sd_image(struct ggml_tensor* input, ui
     for (int iy = 0; iy < height; iy++) {
         for (int ix = 0; ix < width; ix++) {
             for (int k = 0; k < channels; k++) {
-                float value                                               = ggml_ext_tensor_get_f32(input, ix, iy, k);
+                float value = ggml_ext_tensor_get_f32(input, ix, iy, k);
+                // Clamp value to [0, 1] range and handle NaN/infinity
+                if (std::isnan(value) || std::isinf(value)) {
+                    value = 0.0f;
+                }
+                value = std::max(0.0f, std::min(1.0f, value));
                 *(image_data + iy * width * channels + ix * channels + k) = (uint8_t)(value * 255.0f);
             }
         }
@@ -413,6 +418,11 @@ __STATIC_INLINE__ uint8_t* ggml_tensor_to_sd_image(struct ggml_tensor* input, in
                 } else {
                     value = ggml_ext_tensor_get_f32(input, iw, ih, ic, idx);
                 }
+                // Clamp value to [0, 1] range and handle NaN/infinity
+                if (std::isnan(value) || std::isinf(value)) {
+                    value = 0.0f;
+                }
+                value = std::max(0.0f, std::min(1.0f, value));
                 *(image_data + ih * width * channels + iw * channels + ic) = (uint8_t)(value * 255.0f);
             }
         }
